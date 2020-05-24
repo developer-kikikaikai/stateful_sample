@@ -5,38 +5,8 @@ import (
 
 	"stateful_sample/statemachine"
 
-	"github.com/awalterschulze/gographviz"
 	"github.com/bykof/stateful/statefulGraph"
 )
-
-func Draw(name string, smg statefulGraph.StateMachineGraph) error {
-	var err error
-	graph := gographviz.NewGraph()
-
-	err = graph.SetDir(true)
-	if err != nil {
-		return err
-	}
-
-	err = graph.SetName(name)
-	if err != nil {
-		return err
-	}
-
-	err = smg.DrawStates(graph)
-	if err != nil {
-		return err
-	}
-
-	err = smg.DrawEdges(graph)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(graph.String())
-
-	return nil
-}
 
 func main() {
 	order := statemachine.NewOrderState(10000)
@@ -44,9 +14,7 @@ func main() {
 
 	//check graph
 	stateMachineGraph := statefulGraph.StateMachineGraph{StateMachine: machine}
-	//_ = stateMachineGraph.DrawGraph()
-	//nameが無いので追加。PRを送っています。
-	_ = Draw("order", stateMachineGraph)
+	_ = stateMachineGraph.DrawGraphWithName("order")
 
 	//注文してみる
 	var err error
