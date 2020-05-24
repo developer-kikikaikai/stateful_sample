@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 
+	"stateful_sample/statemachine"
+
 	"github.com/awalterschulze/gographviz"
-	"github.com/bykof/stateful"
 	"github.com/bykof/stateful/statefulGraph"
-	. "stateful_sample/statefulobj"
 )
 
 func Draw(name string, smg statefulGraph.StateMachineGraph) error {
@@ -39,75 +39,72 @@ func Draw(name string, smg statefulGraph.StateMachineGraph) error {
 }
 
 func main() {
-	machine := NewMachine()
-	stateMachine := stateful.StateMachine{
-		StatefulObject: &machine,
-	}
-	//Add transition
-	stateMachine.AddTransition(
-		machine.ToB,
-		stateful.States{BEGIN, A}, //src
-		stateful.States{B},        //dist
-	)
+	order := statemachine.NewOrderState(10000)
+	machine := statemachine.NewStateMachine(order)
 
-	stateMachine.AddTransition(
-		machine.FromBtoA,
-		stateful.States{B}, //src
-		stateful.States{A}, //dist
-	)
-	stateMachine.AddTransition(
-		machine.FromBtoA2,
-		stateful.States{B}, //src
-		stateful.States{A}, //dist
-	)
+	//check graph
+	stateMachineGraph := statefulGraph.StateMachineGraph{StateMachine: machine}
+	//_ = stateMachineGraph.DrawGraph()
+	//nameが無いので追加。PRを送っています。
+	_ = Draw("order", stateMachineGraph)
 
-	//check automaton
-	stateMachineGraph := statefulGraph.StateMachineGraph{StateMachine: stateMachine}
-	_ = stateMachineGraph.DrawGraph()
-	_ = Draw("sample", stateMachineGraph)
+	//注文してみる
+	var err error
+	product1 := statemachine.Product{1000}
+	err = machine.Run(order.SelectProduct, &product1)
+	if err != nil {
+		fmt.Printf("Error")
+		return
+	}
+	//2重の注文はできない
+	err = machine.Run(order.SelectProduct, &product1)
+	if err == nil {
+		fmt.Printf("Error")
+		return
+	} else {
+		fmt.Printf("You can't send multiple requests: %s\n", err.Error())
+	}
+	//注文
+	err = machine.Run(order.Order, &product1)
+	if err != nil {
+		fmt.Printf("Error")
+		return
+	}
+	fmt.Printf("  ##Deposit: %d\n", order.Deposit())
+	//Cancelする
+	err = machine.Run(order.Cancel, &product1)
+	if err != nil {
+		fmt.Printf("Error")
+		return
+	}
+	fmt.Printf("  ##Deposit: %d\n", order.Deposit())
+	//もう一度注文
+	err = machine.Run(order.Order, &product1)
+	if err != nil {
+		fmt.Printf("Error")
+		return
+	}
+	fmt.Printf("  ##Deposit: %d\n", order.Deposit())
+	//発送する
+	err = machine.Run(order.Ship, &product1)
+	if err != nil {
+		fmt.Printf("Error")
+		return
+	}
+	fmt.Printf("  ##Deposit: %d\n", order.Deposit())
+	//高いものは注文できない
+	product2 := statemachine.Product{9500}
+	err = machine.Run(order.Order, &product2)
+	if err == nil {
+		fmt.Printf("Error")
+		return
+	}
+	fmt.Printf("%s\n", err.Error())
+	fmt.Printf("  ##Deposit: %d\n", order.Deposit())
 
-	arg := SampleArgument{}
-	fmt.Printf("[main] expect: failed!!!\n")
-	err := stateMachine.Run(
-		machine.FromBtoA,
-		&arg,
-	)
-	if err != nil {
-		fmt.Printf("###Error!!%s\n", err.Error())
-	}
-	fmt.Printf("[main] Run with ToB!!!\n")
-	err = stateMachine.Run(
-		machine.ToB,
-		&arg,
-	)
-	if err != nil {
-		fmt.Printf("###Error!!%s\n", err.Error())
-	}
+	_ = machine.Run(order.Order, &product1)
+	fmt.Printf("  ##Deposit: %d\n", order.Deposit())
 
-	fmt.Printf("[main] Run with FromBtoA!!!\n")
-	err = stateMachine.Run(
-		machine.FromBtoA,
-		&arg,
-	)
-	if err != nil {
-		fmt.Printf("###Error!!%s\n", err.Error())
-	}
-	fmt.Printf("[main] Run with FromAtoB!!!\n")
-	err = stateMachine.Run(
-		machine.ToB,
-		&arg,
-	)
-	if err != nil {
-		fmt.Printf("###Error!!%s\n", err.Error())
-	}
-	fmt.Printf("[main] Run!!!\n")
-	err = stateMachine.Run(
-		machine.FromBtoA2,
-		&arg,
-	)
-	if err != nil {
-		fmt.Printf("###Error!!%s\n", err.Error())
-	}
-
-	fmt.Printf("[main] History:%s\n", arg.GetHistory())
+	_ = machine.Run(order.ShopProblem, &product1)
+	fmt.Printf("  ##Deposit: %d\n", order.Deposit())
 }
